@@ -108,7 +108,8 @@ class SSHConnection:
             if 'identityfile' in host_config and host_config['identityfile']:
                 # identityfile can be a list, take the first one
                 identity = host_config['identityfile']
-                config_params['identityfile'] = os.path.expanduser(identity)
+                identity_str = identity[0] if isinstance(identity, list) else identity
+                config_params['identityfile'] = os.path.expanduser(identity_str)
             if 'port' in host_config:
                 config_params['port'] = int(host_config['port'])
 
@@ -139,7 +140,8 @@ class SSHConnection:
                     config_params['proxy_username'] = proxy_config['user']
                 if 'identityfile' in proxy_config and proxy_config['identityfile']:
                     proxy_identity = proxy_config['identityfile']
-                    config_params['proxy_key_path'] = os.path.expanduser(proxy_identity)
+                    proxy_identity_str = proxy_identity[0] if isinstance(proxy_identity, list) else proxy_identity
+                    config_params['proxy_key_path'] = os.path.expanduser(proxy_identity_str)
                 if 'port' in proxy_config and 'proxy_port' not in config_params:
                     config_params['proxy_port'] = int(proxy_config['port'])
 

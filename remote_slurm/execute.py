@@ -154,9 +154,10 @@ class SlurmExecutor:
         if isinstance(execution_result, Failure):
             return execution_result
 
-        job_id = execution_result.unwrap().split()[-1]
-        submitted_job = SubmittedSlurmJob(job_id, self.slurm_script.slurm_options, self.ssh_connection, self.slurm_script)
-        return Success(submitted_job)
+        submitted_job = execution_result.bind(
+            lambda x: SubmittedSlurmJob(x.unwrap(), self.slurm_script.slurm_options, self.ssh_connection, self.slurm_script)
+        )
+        return submitted_job
 
     def _upload_script(self, content: str, remote_path: str) -> Result[None, str]:
         """

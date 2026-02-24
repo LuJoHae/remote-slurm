@@ -223,7 +223,7 @@ class SSHConnection:
             proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self.logger.debug(f"Using parameters: proxy_username={self.proxy_username}, " +
                               f"proxy_hostname={self.proxy_hostname}, " +
-                              f"proxy_key_path={self.proxy_key_path}" +
+                              f"proxy_key_path={self.proxy_key_path}, " +
                               f"proxy_port={self.proxy_port}")
             proxy_client.connect(
                 hostname=self.proxy_hostname,

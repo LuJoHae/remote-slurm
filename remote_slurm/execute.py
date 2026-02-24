@@ -1,10 +1,99 @@
 from typing import Literal, Optional
 from pathlib import Path
+import datetime
 from returns.result import Result, Success, Failure
-from remote_slurm.slurmify import SlurmScript
+from remote_slurm.slurmify import SlurmScript, SlurmOptions
 from remote_slurm.ssh import SSHConnection
 
 ExecutionMode = Literal["srun", "sbatch"]
+
+
+class SubmittedSlurmJob:
+    """Class that models a submitted SLURM job."""
+
+    def __init__(self, job_id: str, slurm_options: 'SlurmOptions', ssh_connection: SSHConnection,
+                 slurm_script: SlurmScript) -> None:
+        """
+        Initialize a SubmittedSlurmJob.
+
+        Args:
+            job_id: Job ID of the submitted SLURM job
+            slurm_options: SlurmOptions object containing the job parameters
+            ssh_connection: SSHConnection object for remote communication
+            slurm_script: SlurmScript object containing the script used to execute the job
+        """
+        self.job_id = job_id
+        self.slurm_options = slurm_options
+        self.ssh_connection = ssh_connection
+        self.slurm_script = slurm_script
+
+    def is_running(self) -> Result[bool, str]:
+        """
+        Check if the SLURM job is still running.
+
+        Returns:
+            Result containing either a boolean (Success) or an error message (Failure)
+        """
+        command = f"squeue -j {self.job_id} --format='%T' --noheader"
+        exec_result = self.ssh_connection.execute_command(command)
+
+        if isinstance(exec_result, Failure):
+            return Failure(f"Failed to check job status: {exec_result.failure()}")
+
+        output = exec_result.unwrap()[0].strip()
+        return Success(output in ["RUNNING", "PENDING"])
+
+    def get_job_info(self) -> Result[dict, str]:
+        """
+        Get information about the SLURM job from squeue.
+
+        Returns:
+            Result containing either a dictionary with job info (Success) or an error message (Failure)
+        """
+        command = f"squeue -j {self.job_id} --format='%T %M %l %L' --noheader"
+        exec_result = self.ssh_connection.execute_command(command)
+
+        if isinstance(exec_result, Failure):
+            return Failure(f"Failed to get job info: {exec_result.failure()}")
+
+        output = exec_result.unwrap()[0].strip().split()
+        try:
+            status, elapsed_time, time_limit, time_left = output
+        except ValueError as e:
+            return Failure(f"Unexpected squeue output format: {e}")
+
+        return Success({
+            "status": status,
+            "elapsed_time": elapsed_time,
+            "time_limit": time_limit,
+            "time_left": time_left
+        })
+
+    def read_log_files(self) -> Result[tuple[str, str], str]:
+        """
+        Read the log files from the paths given in the output and error parameters of the slurm options.
+
+        Returns:
+            Result containing either a tuple with stdout and stderr (Success) or an error message (Failure)
+        """
+        output_path = self.slurm_options.output.replace("%j", self.job_id)
+        error_path = self.slurm_options.error.replace("%j", self.job_id)
+
+        read_output_command = f"cat {output_path}"
+        read_error_command = f"cat {error_path}"
+
+        output_result = self.ssh_connection.execute_command(read_output_command)
+        if isinstance(output_result, Failure):
+            return Failure(f"Failed to read output log: {output_result.failure()}")
+
+        error_result = self.ssh_connection.execute_command(read_error_command)
+        if isinstance(error_result, Failure):
+            return Failure(f"Failed to read error log: {error_result.failure()}")
+
+        stdout = output_result.unwrap()[0]
+        stderr = error_result.unwrap()[0]
+
+        return Success((stdout, stderr))
 
 
 class SlurmExecutor:
@@ -25,9 +114,9 @@ class SlurmExecutor:
             self,
             mode: ExecutionMode = "sbatch",
             remote_path: Optional[str] = None
-    ) -> Result[str, str]:
+    ) -> Result[SubmittedSlurmJob, str]:
         """
-        Execute the SLURM script on the remote server.
+        Execute the SLURM script on the remote server and return a SubmittedSlurmJob object.
 
         Args:
             mode: Execution mode - either 'srun' for interactive or 'sbatch' for batch
@@ -62,7 +151,12 @@ class SlurmExecutor:
         cleanup_command = f"rm -f {remote_path}"
         self._run_command(cleanup_command)
 
-        return execution_result
+        if isinstance(execution_result, Failure):
+            return execution_result
+
+        job_id = execution_result.unwrap().split()[-1]
+        submitted_job = SubmittedSlurmJob(job_id, self.slurm_script.options, self.ssh_connection, self.slurm_script)
+        return Success(submitted_job)
 
     def _upload_script(self, content: str, remote_path: str) -> Result[None, str]:
         """

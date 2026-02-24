@@ -218,6 +218,7 @@ class SSHConnection:
             self.logger.info(f"Connecting through proxy: {self.proxy_username}@{self.proxy_hostname}:{self.proxy_port}")
 
             # Create proxy client
+            self.logger.debug(f"Creating proxy client for {self.proxy_username}@{self.proxy_hostname}")
             proxy_client = paramiko.SSHClient()
             proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             proxy_client.connect(
@@ -228,6 +229,7 @@ class SSHConnection:
             )
 
             # Create transport channel through proxy
+            self.logger.debug(f"Creating transport channel through proxy {self.proxy_hostname}")
             proxy_transport = proxy_client.get_transport()
             dest_addr = (self.hostname, self.port)
             local_addr = ('127.0.0.1', 0)
@@ -236,6 +238,7 @@ class SSHConnection:
             proxy_channel = proxy_transport.open_channel("direct-tcpip", dest_addr, local_addr)
 
             # Connect to target host through proxy channel
+            self.logger.debug(f"Connecting to {self.hostname} via proxy {self.proxy_hostname}")
             self.client.connect(
                 hostname=self.hostname,
                 username=self.username,

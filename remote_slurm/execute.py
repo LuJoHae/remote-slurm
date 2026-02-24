@@ -155,7 +155,7 @@ class SlurmExecutor:
             return execution_result
 
         submitted_job = execution_result.bind(
-            lambda x: SubmittedSlurmJob(x.unwrap(), self.slurm_script.slurm_options, self.ssh_connection, self.slurm_script)
+            lambda x: SubmittedSlurmJob(x, self.slurm_script.slurm_options, self.ssh_connection, self.slurm_script)
         )
         return submitted_job
 

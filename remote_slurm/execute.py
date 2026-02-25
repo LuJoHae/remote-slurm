@@ -105,9 +105,9 @@ class SubmittedSlurmJob:
 def extract_job_number(response):
     matches = re.match(r"Submitted batch job (\d{7})\n", response)
     if matches is None:
-        return Failure("", "No job id found in {}".format(response))
+        return Failure("No job id found in {}".format(response))
     if len(matches.groups()) >= 2:
-        return Failure("", "Multiple job ids found in {}".format(response))
+        return Failure("Multiple job ids found in {}".format(response))
     return matches.groups()[0]
 
 

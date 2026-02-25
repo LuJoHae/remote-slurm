@@ -1,9 +1,8 @@
 from typing import Literal, Optional
-from pathlib import Path
-import datetime
 from returns.result import Result, Success, Failure
 from remote_slurm.slurmify import SlurmScript, SlurmOptions
 from remote_slurm.ssh import SSHConnection
+import re
 
 ExecutionMode = Literal["srun", "sbatch"]
 
@@ -96,6 +95,15 @@ class SubmittedSlurmJob:
         return Success((stdout, stderr))
 
 
+def extract_job_number(response):
+    matches = re.match(r"Submitted batch job (\d{7})\n", response)
+    if matches is None:
+        return Failure("", "No job id found in {}".format(response))
+    if len(matches.groups()) >= 2:
+        return Failure("", "Multiple job ids found in {}".format(response))
+    return matches.groups()[0]
+
+
 class SlurmExecutor:
     """Class that executes SLURM scripts on remote servers via SSH."""
 
@@ -151,10 +159,9 @@ class SlurmExecutor:
         cleanup_command = f"rm -f {remote_path}"
         self._run_command(cleanup_command)
 
-        if isinstance(execution_result, Failure):
-            return execution_result
+        job_id = execution_result.map(extract_job_number)
 
-        submitted_job = execution_result.bind(
+        submitted_job = job_id.map(
             lambda x: SubmittedSlurmJob(x, self.slurm_script.slurm_options, self.ssh_connection, self.slurm_script)
         )
         return submitted_job

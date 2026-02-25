@@ -75,8 +75,15 @@ class SubmittedSlurmJob:
         Returns:
             Result containing either a tuple with stdout and stderr (Success) or an error message (Failure)
         """
-        output_path = self.slurm_options.output.replace("%j", self.job_id)
-        error_path = self.slurm_options.error.replace("%j", self.job_id)
+
+        output_path = self.slurm_options.output\
+            .replace("%j", self.job_id)\
+            .replace("%u", self.ssh_connection.username)\
+            .replace("%x", self.slurm_options.job_name)
+        error_path = self.slurm_options.error\
+            .replace("%j", self.job_id)\
+            .replace("%u", self.ssh_connection.username)\
+            .replace("%x", self.slurm_options.job_name)
 
         read_output_command = f"cat {output_path}"
         read_error_command = f"cat {error_path}"

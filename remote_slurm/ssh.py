@@ -296,7 +296,10 @@ class SSHConnection:
             stdout_str = stdout.read().decode('utf-8')
             stderr_str = stderr.read().decode('utf-8')
 
-            self.logger.debug(f"Executed command: {command} (exit code: {exit_code})")
+            if len(command.strip()) > 40:
+                self.logger.debug(f"Executed command: {command[:40]}... (exit code: {exit_code})")
+            else:
+                self.logger.debug(f"Executed command: {command} (exit code: {exit_code})")
 
             return stdout_str, stderr_str, exit_code
 

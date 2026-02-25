@@ -3,8 +3,10 @@ from returns.result import Result, Success, Failure
 from remote_slurm.slurmify import SlurmScript, SlurmOptions
 from remote_slurm.ssh import SSHConnection
 import re
+import logging
 
 ExecutionMode = Literal["srun", "sbatch"]
+logger = logging.getLogger(__name__)
 
 
 class SubmittedSlurmJob:
@@ -84,6 +86,7 @@ class SubmittedSlurmJob:
             .replace("%j", self.job_id)\
             .replace("%u", self.ssh_connection.username)\
             .replace("%x", self.slurm_options.job_name)
+        logger.debug(f"Setting log files to {output_path} and {error_path}")
 
         read_output_command = f"cat {output_path}"
         read_error_command = f"cat {error_path}"

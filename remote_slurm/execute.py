@@ -117,7 +117,11 @@ def extract_job_number(response):
 class SlurmExecutor:
     """Class that executes SLURM scripts on remote servers via SSH."""
 
-    def __init__(self, ssh_connection: SSHConnection, slurm_script: SlurmScript) -> None:
+    def __init__(
+            self, ssh_connection: SSHConnection,
+            slurm_script: SlurmScript,
+            args_string: Optional[str] = None
+    ) -> None:
         """
         Initialize a SlurmExecutor.
 
@@ -127,11 +131,13 @@ class SlurmExecutor:
         """
         self.ssh_connection = ssh_connection
         self.slurm_script = slurm_script
+        self.args_string = args_string
 
     def execute(
             self,
             mode: ExecutionMode = "sbatch",
-            remote_path: Optional[str] = None
+            remote_path: Optional[str] = None,
+            args_string: Optional[str] = None
     ) -> Result[SubmittedSlurmJob, str]:
         """
         Execute the SLURM script on the remote server and return a SubmittedSlurmJob object.
@@ -140,6 +146,8 @@ class SlurmExecutor:
             mode: Execution mode - either 'srun' for interactive or 'sbatch' for batch
             remote_path: Optional remote path where script will be uploaded. 
                         If None, uses /tmp/slurm_script_<hash>.sh
+            args_string: Optional additional arguments string passed directly to sbatch/srun command.
+                        If None, uses self.args_string.
 
         Returns:
             Result containing either the command output (Success) or an error message (Failure)
@@ -162,7 +170,7 @@ class SlurmExecutor:
             return upload_result
 
         # Execute with appropriate command
-        command = f"{mode} {remote_path}"
+        command = f"{mode} {remote_path} {args_string}"
         execution_result = self._run_command(command)
 
         # Cleanup: remove the script after execution

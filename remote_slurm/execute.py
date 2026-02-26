@@ -170,6 +170,8 @@ class SlurmExecutor:
             return upload_result
 
         # Execute with appropriate command
+        if args_string is None:
+            args_string = self.args_string if self.args_string else ""
         command = f"{mode} {remote_path} {args_string}"
         logger.debug(f"Executing '{command}'")
         execution_result = self._run_command(command)

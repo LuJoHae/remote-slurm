@@ -33,7 +33,7 @@ class PackageLogFilter(logging.Filter):
         return True
 
 
-def setup_logging(level=logging.INFO, shorten_names=True):
+def setup_logging(level=logging.INFO, shorten_names=True, log_file=None):
     logger = logging.getLogger("remote_slurm")
     logger.setLevel(level)
     logger.propagate = False
@@ -53,5 +53,10 @@ def setup_logging(level=logging.INFO, shorten_names=True):
     # Pass the global flag into the filter
     logger.addFilter(PackageLogFilter(shorten=shorten_names))
     logger.addHandler(handler)
+
+    if log_file:
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     return logger

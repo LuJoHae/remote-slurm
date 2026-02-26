@@ -171,7 +171,7 @@ class SlurmExecutor:
 
         # Execute with appropriate command
         command = f"{mode} {remote_path} {args_string}"
-        logging.debug(f"Executing '{command}'")
+        logger.debug(f"Executing '{command}'")
         execution_result = self._run_command(command)
 
         # Cleanup: remove the script after execution

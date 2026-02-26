@@ -7,46 +7,51 @@ import remote_slurm.slurmify
 
 
 class PackageLogFilter(logging.Filter):
-    """Handles both name truncation and newline escaping for clean logs."""
+    """Handles name truncation (optional) and newline escaping."""
+
+    def __init__(self, shorten=True):
+        super().__init__()
+        self.shorten = shorten
 
     def filter(self, record):
-        # 1. Truncate the Logger Name
         max_len = 25
-        if len(record.name) > max_len:
-            record.short_name = record.name[:max_len - 3] + "..."
-        else:
-            record.short_name = record.name.ljust(max_len)
 
-        # 2. Escape Newlines in the message
-        # We convert actual newlines into the literal string "\n"
+        # 1. Handle Name Formatting
+        if self.shorten:
+            if len(record.name) > max_len:
+                record.short_name = record.name[:max_len - 3] + "..."
+            else:
+                record.short_name = record.name.ljust(max_len)
+        else:
+            # If shortening is disabled, just use the full name
+            record.short_name = record.name
+
+        # 2. Escape Newlines
         if isinstance(record.msg, str):
             record.msg = record.msg.replace('\n', '\\n')
 
         return True
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level=logging.INFO, shorten_names=True):
     logger = logging.getLogger("remote_slurm")
     logger.setLevel(level)
-
-    # Prevent logs from double-printing if the user has their own root logger
     logger.propagate = False
 
-    # Clear existing handlers (crucial for Jupyter)
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    # Create a consistent format
-    # %(name)s will show 'mypackage.submodule'
+    # Note: Changed %(name)s to %(short_name)s to use the filter's output
     formatter = logging.Formatter(
-        fmt='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
+        fmt='%(asctime)s | %(levelname)-8s | %(short_name)s | %(message)s',
         datefmt='%H:%M:%S'
     )
 
-    # Redirect to stdout (best for both Terminal and Jupyter)
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
-    logger.addFilter(PackageLogFilter())
+
+    # Pass the global flag into the filter
+    logger.addFilter(PackageLogFilter(shorten=shorten_names))
     logger.addHandler(handler)
 
     return logger
